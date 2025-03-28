@@ -1,5 +1,5 @@
 from googlegit_scraper import GoogleGitScraper
-from scraper.config import base_path
+from scraping.config import base_path
 
 # Hardcoded values
 review_id = "51750"
