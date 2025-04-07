@@ -125,7 +125,12 @@ class ScraperController:
         after_files = []
         before_files = []
 
+        i = 0
+
         for file in os.listdir(source_folder):
+            print(f"Iteration number {i}, namefile: {file}")
+            after_files = []
+            before_files = []
             full_path = os.path.join(source_folder, file)
             try:
                 with open(full_path, "r") as source_file:
@@ -141,12 +146,15 @@ class ScraperController:
                     diff_text = f"{filename} \n\n {file_content}"
                     after_lines, before_lines = self.save_diff_versions(diff_text)
                     after_files.append(after_lines)
+                    after_files.append("\n\n\n\n")
                     before_files.append(before_lines)
+                    before_files.append("\n\n\n\n")
 
                 before_files_flat = [item for sublist in before_files for item in sublist]
                 after_files_flat = [item for sublist in after_files for item in sublist]
-                full_before_path = os.path.join(before_folder, file)
-                full_after_path = os.path.join(after_folder, file)
+                name = file.rpartition('.')[0]
+                full_before_path = os.path.join(before_folder, f"before_{name}")
+                full_after_path = os.path.join(after_folder, f"after_{name}")
                 # Save to files
                 with open(f"{full_before_path}", 'w') as f_before:
                     f_before.write('\n'.join(before_files_flat))
@@ -154,12 +162,13 @@ class ScraperController:
                 with open(f"{full_after_path}", 'w') as f_after:
                     f_after.write('\n'.join(after_files_flat))
 
-
+                i = i + 1
             except FileNotFoundError:
                 print(f"Error: File {file} not found")
 
             except json.JSONDecodeError:
                 print("Error while reading the JSON file")
+
 
 
 if __name__ == "__main__":
