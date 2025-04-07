@@ -99,8 +99,74 @@ class ScraperController:
         except json.JSONDecodeError:
             print("Error while reading the JSON file")
 
+    def save_diff_versions(self, diff_text):
+        before_lines = []
+        after_lines = []
+
+        for line in diff_text.splitlines():
+            if line.startswith('+') and not line.startswith('+++'):
+                after_lines.append(line[1:])
+            elif line.startswith('-') and not line.startswith('---'):
+                before_lines.append(line[1:])  # Remove '-' prefix
+            elif line.startswith(' ') or not line.startswith(('+', '-')):
+                # Common context or neutral lines
+                stripped_line = line.lstrip(' ')
+                before_lines.append(stripped_line)
+                after_lines.append(stripped_line)
+
+        return after_lines, before_lines
+
+    def divide_crs (self):
+        source_folder = os.path.join(self.base_path, "pure_java_crs")
+        after_folder = os.path.join(self.base_path, "after_crs")
+        os.makedirs(after_folder, exist_ok=True)
+        before_folder = os.path.join(self.base_path, "before_crs")
+        os.makedirs(before_folder, exist_ok=True)
+        after_files = []
+        before_files = []
+
+        for file in os.listdir(source_folder):
+            full_path = os.path.join(source_folder, file)
+            try:
+                with open(full_path, "r") as source_file:
+                    source_data = json.load(source_file)
+
+                cr_task = source_data.get("CR task", {})
+                files = source_data.get("files", {})
+
+                for file_info in files:
+                    filename = file_info.get("filename", "")
+                    file_content = file_info.get("file content", "")
+                    # Prepare diff text by combining filename and content
+                    diff_text = f"{filename} \n\n {file_content}"
+                    after_lines, before_lines = self.save_diff_versions(diff_text)
+                    after_files.append(after_lines)
+                    before_files.append(before_lines)
+
+                before_files_flat = [item for sublist in before_files for item in sublist]
+                after_files_flat = [item for sublist in after_files for item in sublist]
+                full_before_path = os.path.join(before_folder, file)
+                full_after_path = os.path.join(after_folder, file)
+                # Save to files
+                with open(f"{full_before_path}", 'w') as f_before:
+                    f_before.write('\n'.join(before_files_flat))
+
+                with open(f"{full_after_path}", 'w') as f_after:
+                    f_after.write('\n'.join(after_files_flat))
+
+
+            except FileNotFoundError:
+                print(f"Error: File {file} not found")
+
+            except json.JSONDecodeError:
+                print("Error while reading the JSON file")
+
+
 if __name__ == "__main__":
     controller = ScraperController(base_path)
-    controller.load_data()
-    controller.scrape()  # Call to start scraping
-    controller.move_files()  # Call to move files
+    #controller.load_data()
+    #controller.scrape()  # Call to start scraping
+    #controller.move_files()  # Call to move files
+
+    controller.divide_crs()
+
