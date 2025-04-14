@@ -108,6 +108,9 @@ class ScraperController:
                 after_lines.append(line[1:])
             elif line.startswith('-') and not line.startswith('---'):
                 before_lines.append(line[1:])  # Remove '-' prefix
+            elif line.startswith("diff --git") or line.startswith('index ') or line.startswith('@@ '):
+                before_lines.append(f"//Synthetic comment -- {line}")
+                after_lines.append(f"//Synthetic comment -- {line}")
             elif line.startswith(' ') or not line.startswith(('+', '-')):
                 # Common context or neutral lines
                 stripped_line = line.lstrip(' ')
@@ -152,7 +155,7 @@ class ScraperController:
                         filename = file_info.get("filename", "")
                         file_content = file_info.get("file content", "")
                         # Prepare diff text by combining filename and content
-                        diff_text = f"{filename} \n\n {file_content}"
+                        diff_text = f"{filename}\n\n{file_content}"
                         after_lines, before_lines = self.save_diff_versions(diff_text)
                         after_files.append(after_lines)
                         after_files.append("\n\n\n\n")
