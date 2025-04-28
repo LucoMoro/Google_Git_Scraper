@@ -5,6 +5,7 @@ import os
 from googlegit_scraper import GoogleGitScraper
 from config import base_path
 from scraper_manager import ScraperManager
+from semgrep_extractor import SemgrepExtractor
 
 
 class ScraperController:
@@ -208,6 +209,21 @@ if __name__ == "__main__":
     #controller.scrape()  # Call to start scraping
     #controller.move_files()  # Call to move files
 
-    controller.divide_crs("python_crs", "after_python_crs", "before_python_crs", "cr_python_tasks", "py", "#")
+    #controller.divide_crs("python_crs", "after_python_crs", "before_python_crs", "cr_python_tasks", "py", "#")
     #controller.move_files("python_crs", "no_python_crs", ".py")
+
+    filename = "semgrep_high_medium"
+    semgrep_file = os.path.join(base_path, f"semgrep_csv/{filename}.csv")
+    extractor = SemgrepExtractor(semgrep_file)
+    names = extractor.get_unique_names()
+
+    print(len(extractor.names))
+    print(names)
+    print(len(names))
+
+    semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
+    with open(semgrep_names, "w") as file:
+        file.write(f"Number of files: {len(names)} \n\n {names}")
+
+
 
