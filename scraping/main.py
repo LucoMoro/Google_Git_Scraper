@@ -109,8 +109,9 @@ class ScraperController:
             elif line.startswith('-') and not line.startswith('---'):
                 before_lines.append(line[1:])  # Remove '-' prefix
             elif line.startswith("diff --git") or line.startswith('index ') or line.startswith('@@ '):
-                before_lines.append(f"//Synthetic comment -- {line}")
-                after_lines.append(f"//Synthetic comment -- {line}")
+                #before_lines.append(f"//Synthetic comment -- {line}")
+                #after_lines.append(f"//Synthetic comment -- {line}")
+                continue
             elif line.startswith(' ') or not line.startswith(('+', '-')):
                 # Common context or neutral lines
                 stripped_line = line.lstrip(' ')
@@ -125,10 +126,13 @@ class ScraperController:
         os.makedirs(after_folder, exist_ok=True)
         before_folder = os.path.join(self.base_path, "before_crs")
         os.makedirs(before_folder, exist_ok=True)
+        cr_folder = os.path.join(self.base_path, "cr_tasks")
+        os.makedirs(cr_folder, exist_ok=True)
         after_files = []
         before_files = []
 
         i = 0
+        snippet_count = 0
 
         for file in os.listdir(source_folder):
             unformatted_files = {"CR_23099-1.json", "CR_23811-1.json", "CR_40028-1.json", "CR_45923-1.json"}
@@ -144,27 +148,38 @@ class ScraperController:
                     cr_task = source_data.get("CR task", "")
                     files = source_data.get("files", {})
 
-                    modified_cr_task = f"/*{cr_task}*/"
+                    json_cr_task = {
+                        "cr_task": f"CR_TASK = {cr_task}"
+                    }
 
-                    after_files.append([modified_cr_task])
-                    after_files.append("\n")
-                    before_files.append([modified_cr_task])
-                    after_files.append("\n")
+                    #after_files.append([modified_cr_task])
+                    #after_files.append("\n")
+                    #before_files.append([modified_cr_task])
+                    #after_files.append("\n")
 
+                    snippet_count = 0
                     for file_info in files:
                         filename = file_info.get("filename", "")
                         file_content = file_info.get("file content", "")
                         # Prepare diff text by combining filename and content
                         diff_text = f"{filename}\n\n{file_content}"
+                        beginning_task = f"\n//<Beginning of snippet n. {snippet_count}>\n"
+                        end_task = f"\n//<End of snippet n. {snippet_count}>\n"
                         after_lines, before_lines = self.save_diff_versions(diff_text)
+                        after_files.append([beginning_task])
                         after_files.append(after_lines)
+                        after_files.append([end_task])
                         after_files.append("\n\n\n\n")
+                        before_files.append([beginning_task])
                         before_files.append(before_lines)
+                        before_files.append([end_task])
                         before_files.append("\n\n\n\n")
+                        snippet_count = snippet_count + 1
 
                     before_files_flat = [item for sublist in before_files for item in sublist]
                     after_files_flat = [item for sublist in after_files for item in sublist]
                     name = file.rpartition('.')[0]
+                    full_cr_path = os.path.join(cr_folder, f"cr_task_{name}.json")
                     full_before_path = os.path.join(before_folder, f"before_{name}.java")
                     full_after_path = os.path.join(after_folder, f"after_{name}.java")
                     # Save to files
@@ -173,6 +188,9 @@ class ScraperController:
 
                     with open(f"{full_after_path}", 'w') as f_after:
                         f_after.write('\n'.join(after_files_flat))
+
+                    with open(f"{full_cr_path}", 'w') as cr:
+                        json.dump(json_cr_task, cr, indent=4)
 
                     i = i + 1
                 except FileNotFoundError:
