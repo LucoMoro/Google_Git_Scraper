@@ -2,6 +2,8 @@ import json
 import random
 import time
 import os
+import ast
+import shutil
 from googlegit_scraper import GoogleGitScraper
 from config import base_path
 from scraper_manager import ScraperManager
@@ -201,14 +203,48 @@ class ScraperController:
                 except json.JSONDecodeError:
                     print("Error while reading the JSON file")
 
+    def create_random_dataset(self, medium_medium_array, remaining_array, dataset_size=312, medium_sample_size=38):
 
-    def random_count_generator(self):
-        files_pos = []
-        while len(set(files_pos)) != 367:
-            file_pos = random.randint(0,8151)
-            files_pos.append(file_pos)
-        return files_pos
+        # Step 2: Randomly select 48 from medium_medium
+        sampled_medium = random.sample(medium_medium_array, medium_sample_size)
 
+        # Step 3: Combine with high_high array
+        array_semgrep_before = set(sampled_medium + remaining_array)
+        print(f"size of array_semgrep_before {len(array_semgrep_before)}")
+
+        # Step 4: Load all filenames from "before_crs"
+        source_folder = os.path.join(self.base_path, "Java/before_crs")
+        all_files = os.listdir(source_folder)
+
+        # Ensure we're not selecting duplicates
+        valid_files = list(set(all_files) - array_semgrep_before)
+
+        if len(valid_files) < dataset_size:
+            raise ValueError("Not enough unique files to sample from.")
+
+        dataset_files = random.sample(valid_files, dataset_size)
+
+        # Step 5: Copy to "dataset" folder
+        dataset_folder = os.path.join(self.base_path, "dataset")
+        os.makedirs(dataset_folder, exist_ok=True)
+
+        dataset_files = dataset_files + list(array_semgrep_before)
+
+        for file_name in dataset_files:
+            src = os.path.join(source_folder, file_name)
+            dst = os.path.join(dataset_folder, file_name)
+            shutil.copyfile(src, dst)
+
+        return dataset_files, sampled_medium
+
+    def list_from_file(self, array_filename):
+        array_file = os.path.join(base_path, f"semgrep_names/{array_filename}.txt")
+        with open(array_file, "r") as f:
+            content = f.read()
+
+        array = ast.literal_eval(content)
+        array = list(array)
+        return array
 
 if __name__ == "__main__":
     controller = ScraperController(base_path)
@@ -225,22 +261,23 @@ if __name__ == "__main__":
     extractor = SemgrepExtractor(semgrep_file)
     names = extractor.get_unique_names()
 
-    print(len(extractor.names))
-    print(names)
-    print(len(names))
+    #print(len(extractor.names))
+    #print(names)
+    #print(len(names))
 
-    files_pos = controller.random_count_generator()
-    files_pos = set(files_pos)
-    print(f"{len(files_pos)} && {len(set(files_pos))}")
+    #semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
+    #with open(semgrep_names, "w") as file:
+        #file.write(f"Number of files: {len(names)} \n\n {names}")
 
-    semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
-    with open(semgrep_names, "w") as file:
-        file.write(f"Number of files: {len(names)} \n\n {names}")
+    high_high_array = controller.list_from_file("semgrep_high_high")
+    high_medium_array = controller.list_from_file("semgrep_high_medium")
+    medium_high_array = controller.list_from_file("semgrep_medium_high")
+    medium_medium_array = controller.list_from_file("semgrep_medium_medium")
+    medium_low_array = controller.list_from_file("semgrep_medium_low")
 
+    remaining_array = (high_high_array + high_medium_array + medium_high_array + medium_low_array)
 
-    files_pos_txt = os.path.join(base_path, f"semgrep_names/{filename_pos}.txt")
-    with open(files_pos_txt, "w") as file:
-        file.write(f"Number of files: {len(files_pos)} \n\n {files_pos}")
+    dataset, sample_medium = controller.create_random_dataset(medium_medium_array, remaining_array)
 
-
-
+    print(f"Dataset of {len(dataset)} files created in 'dataset/' folder.")
+    print(f"Sample of medium medium vulnerabilities: {len(sample_medium)}.")
