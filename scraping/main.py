@@ -4,6 +4,7 @@ import time
 import os
 import ast
 import shutil
+import re
 from googlegit_scraper import GoogleGitScraper
 from config import base_path
 from scraper_manager import ScraperManager
@@ -246,6 +247,31 @@ class ScraperController:
         array = list(array)
         return array
 
+    def extract_cr_identifiers(self, filenames):
+        pattern = re.compile(r"CR_\d+-\d+")
+        identifiers = set()
+        for name in filenames:
+            match = pattern.search(name)
+            if match:
+                identifiers.add(match.group())
+        return identifiers
+
+    def copy_matching_tasks(self, dataset_folder, cr_tasks_folder, output_folder):
+        os.makedirs(output_folder, exist_ok=True)
+
+        dataset_files = os.listdir(dataset_folder)
+        cr_ids = self.extract_cr_identifiers(dataset_files)
+
+        task_files = os.listdir(cr_tasks_folder)
+
+        for task_file in task_files:
+            if any(cr_id in task_file for cr_id in cr_ids):
+                src = os.path.join(cr_tasks_folder, task_file)
+                dst = os.path.join(output_folder, task_file)
+                shutil.copyfile(src, dst)
+
+        print(f"Copied all matching tasks to '{output_folder}'.")
+
 if __name__ == "__main__":
     controller = ScraperController(base_path)
     #controller.load_data()
@@ -281,3 +307,9 @@ if __name__ == "__main__":
 
     print(f"Dataset of {len(dataset)} files created in 'dataset/' folder.")
     print(f"Sample of medium medium vulnerabilities: {len(sample_medium)}.")
+
+    dataset_folder = os.path.join(base_path, "dataset")
+    cr_tasks_folder = os.path.join(base_path, "Java/cr_tasks")
+    output_folder = os.path.join(base_path, "matching_cr_tasks")
+
+    controller.copy_matching_tasks(dataset_folder, cr_tasks_folder, output_folder)
