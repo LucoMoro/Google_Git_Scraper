@@ -202,6 +202,13 @@ class ScraperController:
                     print("Error while reading the JSON file")
 
 
+    def random_count_generator(self):
+        files_pos = []
+        while len(set(files_pos)) != 367:
+            file_pos = random.randint(0,8151)
+            files_pos.append(file_pos)
+        return files_pos
+
 
 if __name__ == "__main__":
     controller = ScraperController(base_path)
@@ -212,7 +219,8 @@ if __name__ == "__main__":
     #controller.divide_crs("python_crs", "after_python_crs", "before_python_crs", "cr_python_tasks", "py", "#")
     #controller.move_files("python_crs", "no_python_crs", ".py")
 
-    filename = "semgrep_high_medium"
+    filename = "semgrep_medium_low"
+    filename_pos = "positions"
     semgrep_file = os.path.join(base_path, f"semgrep_csv/{filename}.csv")
     extractor = SemgrepExtractor(semgrep_file)
     names = extractor.get_unique_names()
@@ -221,9 +229,18 @@ if __name__ == "__main__":
     print(names)
     print(len(names))
 
+    files_pos = controller.random_count_generator()
+    files_pos = set(files_pos)
+    print(f"{len(files_pos)} && {len(set(files_pos))}")
+
     semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
     with open(semgrep_names, "w") as file:
         file.write(f"Number of files: {len(names)} \n\n {names}")
+
+
+    files_pos_txt = os.path.join(base_path, f"semgrep_names/{filename_pos}.txt")
+    with open(files_pos_txt, "w") as file:
+        file.write(f"Number of files: {len(files_pos)} \n\n {files_pos}")
 
 
 
