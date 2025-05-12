@@ -204,17 +204,17 @@ class ScraperController:
                 except json.JSONDecodeError:
                     print("Error while reading the JSON file")
 
-    def create_random_dataset(self, medium_medium_array, remaining_array, dataset_size=312, medium_sample_size=38):
+    def create_random_dataset(self, array1, array2, dataset_size=338, medium_sample_size=19):
 
         # Step 2: Randomly select 48 from medium_medium
-        sampled_medium = random.sample(medium_medium_array, medium_sample_size)
+        sampled_medium = random.sample(array1, medium_sample_size)
 
         # Step 3: Combine with high_high array
-        array_semgrep_before = set(sampled_medium + remaining_array)
+        array_semgrep_before = set(sampled_medium + array2)
         print(f"size of array_semgrep_before {len(array_semgrep_before)}")
 
         # Step 4: Load all filenames from "before_crs"
-        source_folder = os.path.join(self.base_path, "Java/before_crs")
+        source_folder = os.path.join(self.base_path, "snippets_corti_2000")
         all_files = os.listdir(source_folder)
 
         # Ensure we're not selecting duplicates
@@ -272,6 +272,26 @@ class ScraperController:
 
         print(f"Copied all matching tasks to '{output_folder}'.")
 
+    def filter_existing_files(self, filenames, folder_path):
+        """
+        Takes a list of filenames and returns a filtered list
+        containing only those that exist in the given folder.
+
+        Args:
+            filenames (list): List of file names (with or without extensions).
+            folder_path (str): Path to the folder where files are expected.
+
+        Returns:
+            list: Filtered list containing only filenames that exist in the folder.
+        """
+        existing_files = []
+        for name in filenames:
+            file_path = os.path.join(folder_path, name)
+            if os.path.isfile(file_path):
+                existing_files.append(name)
+        return existing_files
+
+
 if __name__ == "__main__":
     controller = ScraperController(base_path)
     #controller.load_data()
@@ -291,9 +311,9 @@ if __name__ == "__main__":
     #print(names)
     #print(len(names))
 
-    #semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
-    #with open(semgrep_names, "w") as file:
-        #file.write(f"Number of files: {len(names)} \n\n {names}")
+    semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
+    with open(semgrep_names, "w") as file:
+        file.write(f"{names}")
 
     high_high_array = controller.list_from_file("semgrep_high_high")
     high_medium_array = controller.list_from_file("semgrep_high_medium")
@@ -301,9 +321,31 @@ if __name__ == "__main__":
     medium_medium_array = controller.list_from_file("semgrep_medium_medium")
     medium_low_array = controller.list_from_file("semgrep_medium_low")
 
-    remaining_array = (high_high_array + high_medium_array + medium_high_array + medium_low_array)
 
-    dataset, sample_medium = controller.create_random_dataset(medium_medium_array, remaining_array)
+    filtered_dataset_path = os.path.join(base_path, "snippets_corti_2000")
+    high_high_array_filtered = controller.filter_existing_files(high_high_array, filtered_dataset_path)
+    high_medium_array_filtered = controller.filter_existing_files(high_medium_array, filtered_dataset_path)
+    medium_high_array_filtered = controller.filter_existing_files(medium_high_array, filtered_dataset_path)
+    medium_low_array_filtered = controller.filter_existing_files(medium_low_array, filtered_dataset_path)
+    medium_medium_array_filtered = controller.filter_existing_files(medium_medium_array, filtered_dataset_path)
+
+    remaining_array_filtered = (high_high_array_filtered + high_medium_array_filtered + medium_high_array_filtered + medium_low_array_filtered)
+
+    print(f"high high {len(high_high_array)}")
+    print(f"high medium {len(high_medium_array)}")
+    print(f"medium high {len(medium_high_array)}")
+    print(f"medium low {len(medium_low_array)}")
+    print(f"medium medium {len(medium_medium_array)}")
+
+
+    print(f"high high {len(high_high_array_filtered)}")
+    print(f"high medium {len(high_medium_array_filtered)}")
+    print(f"medium high {len(medium_high_array_filtered)}")
+    print(f"medium low {len(medium_low_array_filtered)}")
+    print(f"medium medium {len(medium_medium_array_filtered)}")
+
+
+    dataset, sample_medium = controller.create_random_dataset(medium_medium_array_filtered, remaining_array_filtered)
 
     print(f"Dataset of {len(dataset)} files created in 'dataset/' folder.")
     print(f"Sample of medium medium vulnerabilities: {len(sample_medium)}.")

@@ -13,12 +13,12 @@ class SemgrepExtractor:
 
             for row in self.rows:
                 for column in row:
-                    #after_pattern = r'/after_crs/(after_CR_.*?)(?:#|$)'
-                    #after_match = re.search(after_pattern, column)
+                    after_pattern = r'/after_crs/(after_CR_.*?)(?:#|$)'
+                    after_match = re.search(after_pattern, column)
                     before_pattern = r'/before_crs/(before_CR_.*?)(?:#|$)'
                     before_match = re.search(before_pattern, column)
-                    #if after_match:
-                        #self.names.append(after_match.group(1))
+                    if after_match:
+                        self.names.append(after_match.group(1))
                     if before_match:
                         self.names.append(before_match.group(1))
 
