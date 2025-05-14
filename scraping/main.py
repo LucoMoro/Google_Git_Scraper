@@ -369,8 +369,85 @@ class ScraperController:
 
         controller.copy_matching_tasks(dataset_folder, cr_tasks_folder, output_folder)
 
+    def folders_exploration(self):
+        root_dir = os.path.join(base_path, "configuration_results//configuration_1")
+        conversation_change_map = {}
+
+        for conversation in sorted(os.listdir(root_dir)):
+            conv_path = os.path.join(root_dir, conversation)
+            if not os.path.isdir(conv_path):
+                continue
+
+            iterations = []
+            for item in os.listdir(conv_path):
+                if item.startswith("iteration_"):
+                    iter_path = os.path.join(conv_path, item)
+                    if os.path.isdir(iter_path):
+                        #Searches change_CR_*.json
+                        for fname in os.listdir(iter_path):
+                            if fname.startswith("change_CR_") and fname.endswith(".json"):
+                                iterations.append((int(item.split("_")[1]), os.path.join(iter_path, fname)))
+
+            if iterations:
+                #Takes the last iteration (the one with the higher number)
+                last_iter = sorted(iterations, key=lambda x: x[0])[-1]
+                conversation_change_map[conversation] = last_iter
+
+        #for conv, (iter_num, path) in conversation_change_map.items():
+            #print(f"{conv} -> iteration_{iter_num}: {path}")
+        return conversation_change_map
+
+    def save_changes(self, conversation_change_map):
+        outcome_dir = os.path.join(base_path, "outcome_dataset")
+
+        os.makedirs(outcome_dir, exist_ok=True)
+
+        for conv, (_, change_path) in conversation_change_map.items():
+            # Extracts the number from the folder conversation_x
+            conv_id = re.search(r'\d+', conv).group()
+
+            filename = os.path.basename(change_path)
+            cr_match = re.search(r'(CR_\d+-\d+)', filename)
+            cr_id = cr_match.group(1) if cr_match else "CR_unknown"
+
+            with open(change_path, 'r', encoding='utf-8') as f:
+                try:
+                    data = json.load(f)
+                    response_list = data.get("response", [])
+                    if not response_list:
+                        print(f"[WARN] No response in {change_path}")
+                        continue
+                    code_content = response_list[0].get("content", "").strip()
+                    if code_content.startswith("```java"):
+                        code_content = code_content.split('\n', 1)[1]
+                    if code_content.endswith("```"):
+                        code_content = code_content.rsplit('\n', 1)[0]
+
+                    if not code_content:
+                        print(f"[WARN] No content in {change_path}")
+                        continue
+
+                    # Creates the output directory
+                    target_dir = os.path.join(outcome_dir, f"configuration_{conv_id}")
+                    os.makedirs(target_dir, exist_ok=True)
+
+                    #Saves the code in a file
+                    output_path = os.path.join(target_dir, f"response_{cr_id}.java")
+                    with open(output_path, 'w', encoding='utf-8') as outf:
+                        outf.write(code_content)
+
+                    print(f"[OK] Saved: {output_path}")
+
+                except Exception as e:
+                    print(f"[ERROR] Error in {change_path}: {e}")
+
+
 if __name__ == "__main__":
     controller = ScraperController(base_path)
     #controller.main(controller)
 
-    controller.from_before_take_after()
+    #controller.from_before_take_after()
+
+    files_map = controller.folders_exploration()
+
+    controller.save_changes(files_map)
