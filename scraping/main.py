@@ -291,67 +291,86 @@ class ScraperController:
                 existing_files.append(name)
         return existing_files
 
+    def from_before_take_after(self):
+        before_files = []
+        before_path = os.path.join(base_path, "dataset//snippets")
+        for before_file in os.listdir(before_path):
+            before_name, _ = os.path.splitext(before_file)
+            filtered_name = before_name.replace("before_", "")
+            before_files.append(filtered_name)
+
+        after_path = os.path.join(base_path, "Java//after_crs")
+        after_dataset = os.path.join(base_path, "after_dataset")
+        for name in before_files:
+            src = os.path.join(after_path, f"after_{name}.java")
+            dst = os.path.join(after_dataset, f"after_{name}.java")
+            shutil.copyfile(src, dst)
+
+
+    def main(self, controller):
+        # controller.load_data()
+        # controller.scrape()  # Call to start scraping
+        # controller.move_files()  # Call to move files
+
+        # controller.divide_crs("python_crs", "after_python_crs", "before_python_crs", "cr_python_tasks", "py", "#")
+        # controller.move_files("python_crs", "no_python_crs", ".py")
+
+        filename = "semgrep_medium_low"
+        filename_pos = "positions"
+        semgrep_file = os.path.join(base_path, f"semgrep_csv/{filename}.csv")
+        extractor = SemgrepExtractor(semgrep_file)
+        names = extractor.get_unique_names()
+
+        # print(len(extractor.names))
+        # print(names)
+        # print(len(names))
+
+        semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
+        with open(semgrep_names, "w") as file:
+            file.write(f"{names}")
+
+        high_high_array = controller.list_from_file("semgrep_high_high")
+        high_medium_array = controller.list_from_file("semgrep_high_medium")
+        medium_high_array = controller.list_from_file("semgrep_medium_high")
+        medium_medium_array = controller.list_from_file("semgrep_medium_medium")
+        medium_low_array = controller.list_from_file("semgrep_medium_low")
+
+        filtered_dataset_path = os.path.join(base_path, "snippets_corti_2000")
+        high_high_array_filtered = controller.filter_existing_files(high_high_array, filtered_dataset_path)
+        high_medium_array_filtered = controller.filter_existing_files(high_medium_array, filtered_dataset_path)
+        medium_high_array_filtered = controller.filter_existing_files(medium_high_array, filtered_dataset_path)
+        medium_low_array_filtered = controller.filter_existing_files(medium_low_array, filtered_dataset_path)
+        medium_medium_array_filtered = controller.filter_existing_files(medium_medium_array, filtered_dataset_path)
+
+        remaining_array_filtered = (
+                    high_high_array_filtered + high_medium_array_filtered + medium_high_array_filtered + medium_low_array_filtered)
+
+        print(f"high high {len(high_high_array)}")
+        print(f"high medium {len(high_medium_array)}")
+        print(f"medium high {len(medium_high_array)}")
+        print(f"medium low {len(medium_low_array)}")
+        print(f"medium medium {len(medium_medium_array)}")
+
+        print(f"high high {high_high_array_filtered}")
+        print(f"high medium {high_medium_array_filtered}")
+        print(f"medium high {medium_high_array_filtered}")
+        print(f"medium low {medium_low_array_filtered}")
+        print(f"medium medium {medium_medium_array_filtered}")
+
+        dataset, sample_medium = controller.create_random_dataset(medium_medium_array_filtered,
+                                                                  remaining_array_filtered)
+
+        print(f"Dataset of {len(dataset)} files created in 'dataset/' folder.")
+        print(f"Sample of medium medium vulnerabilities: {len(sample_medium)}.")
+
+        dataset_folder = os.path.join(base_path, "dataset")
+        cr_tasks_folder = os.path.join(base_path, "Java/cr_tasks")
+        output_folder = os.path.join(base_path, "matching_cr_tasks")
+
+        controller.copy_matching_tasks(dataset_folder, cr_tasks_folder, output_folder)
 
 if __name__ == "__main__":
     controller = ScraperController(base_path)
-    #controller.load_data()
-    #controller.scrape()  # Call to start scraping
-    #controller.move_files()  # Call to move files
+    #controller.main(controller)
 
-    #controller.divide_crs("python_crs", "after_python_crs", "before_python_crs", "cr_python_tasks", "py", "#")
-    #controller.move_files("python_crs", "no_python_crs", ".py")
-
-    filename = "semgrep_medium_low"
-    filename_pos = "positions"
-    semgrep_file = os.path.join(base_path, f"semgrep_csv/{filename}.csv")
-    extractor = SemgrepExtractor(semgrep_file)
-    names = extractor.get_unique_names()
-
-    #print(len(extractor.names))
-    #print(names)
-    #print(len(names))
-
-    semgrep_names = os.path.join(base_path, f"semgrep_names/{filename}.txt")
-    with open(semgrep_names, "w") as file:
-        file.write(f"{names}")
-
-    high_high_array = controller.list_from_file("semgrep_high_high")
-    high_medium_array = controller.list_from_file("semgrep_high_medium")
-    medium_high_array = controller.list_from_file("semgrep_medium_high")
-    medium_medium_array = controller.list_from_file("semgrep_medium_medium")
-    medium_low_array = controller.list_from_file("semgrep_medium_low")
-
-
-    filtered_dataset_path = os.path.join(base_path, "snippets_corti_2000")
-    high_high_array_filtered = controller.filter_existing_files(high_high_array, filtered_dataset_path)
-    high_medium_array_filtered = controller.filter_existing_files(high_medium_array, filtered_dataset_path)
-    medium_high_array_filtered = controller.filter_existing_files(medium_high_array, filtered_dataset_path)
-    medium_low_array_filtered = controller.filter_existing_files(medium_low_array, filtered_dataset_path)
-    medium_medium_array_filtered = controller.filter_existing_files(medium_medium_array, filtered_dataset_path)
-
-    remaining_array_filtered = (high_high_array_filtered + high_medium_array_filtered + medium_high_array_filtered + medium_low_array_filtered)
-
-    print(f"high high {len(high_high_array)}")
-    print(f"high medium {len(high_medium_array)}")
-    print(f"medium high {len(medium_high_array)}")
-    print(f"medium low {len(medium_low_array)}")
-    print(f"medium medium {len(medium_medium_array)}")
-
-
-    print(f"high high {len(high_high_array_filtered)}")
-    print(f"high medium {len(high_medium_array_filtered)}")
-    print(f"medium high {len(medium_high_array_filtered)}")
-    print(f"medium low {len(medium_low_array_filtered)}")
-    print(f"medium medium {len(medium_medium_array_filtered)}")
-
-
-    dataset, sample_medium = controller.create_random_dataset(medium_medium_array_filtered, remaining_array_filtered)
-
-    print(f"Dataset of {len(dataset)} files created in 'dataset/' folder.")
-    print(f"Sample of medium medium vulnerabilities: {len(sample_medium)}.")
-
-    dataset_folder = os.path.join(base_path, "dataset")
-    cr_tasks_folder = os.path.join(base_path, "Java/cr_tasks")
-    output_folder = os.path.join(base_path, "matching_cr_tasks")
-
-    controller.copy_matching_tasks(dataset_folder, cr_tasks_folder, output_folder)
+    controller.from_before_take_after()
