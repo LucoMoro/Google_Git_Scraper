@@ -5,6 +5,10 @@ import os
 import ast
 import shutil
 import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import csv
+
 from googlegit_scraper import GoogleGitScraper
 from config import base_path
 from scraper_manager import ScraperManager
@@ -357,20 +361,19 @@ class ScraperController:
         print(f"medium low {medium_low_array_filtered}")
         print(f"medium medium {medium_medium_array_filtered}")
 
-        dataset, sample_medium = controller.create_random_dataset(medium_medium_array_filtered,
-                                                                  remaining_array_filtered)
+        #dataset, sample_medium = controller.create_random_dataset(medium_medium_array_filtered, remaining_array_filtered)
 
-        print(f"Dataset of {len(dataset)} files created in 'dataset/' folder.")
-        print(f"Sample of medium medium vulnerabilities: {len(sample_medium)}.")
+        #print(f"Dataset of {len(dataset)} files created in 'dataset/' folder.")
+        #print(f"Sample of medium medium vulnerabilities: {len(sample_medium)}.")
 
-        dataset_folder = os.path.join(base_path, "dataset")
-        cr_tasks_folder = os.path.join(base_path, "Java/cr_tasks")
-        output_folder = os.path.join(base_path, "matching_cr_tasks")
+        #dataset_folder = os.path.join(base_path, "dataset")
+        #cr_tasks_folder = os.path.join(base_path, "Java/cr_tasks")
+        #output_folder = os.path.join(base_path, "matching_cr_tasks")
 
-        controller.copy_matching_tasks(dataset_folder, cr_tasks_folder, output_folder)
+        #controller.copy_matching_tasks(dataset_folder, cr_tasks_folder, output_folder)
 
     def folders_exploration(self):
-        root_dir = os.path.join(base_path, "configuration_results//configuration_1")
+        root_dir = os.path.join(base_path, "configuration_results//configuration_7")
         conversation_change_map = {}
 
         for conversation in sorted(os.listdir(root_dir)):
@@ -441,13 +444,68 @@ class ScraperController:
                 except Exception as e:
                     print(f"[ERROR] Error in {change_path}: {e}")
 
+    def calculate_cosine_similarity(self, after_root, outcome_root):
+        similarities = []
+        total_similarity = 0
+        for config_folder in os.listdir(outcome_root):
+            config_path = os.path.join(outcome_root, config_folder)
+            if not os.path.isdir(config_path):
+                continue
+
+            # Trova i file response_CR_*.java nella configuration_X
+            response_files = [f for f in os.listdir(config_path) if
+                              f.startswith("response_CR_") and f.endswith(".java")]
+            for response_file in response_files:
+                # Crea il nome del file corrispondente in after_dataset
+                after_file_name = "after_" + response_file[len("response_"):]
+
+                outcome_path = os.path.join(config_path, response_file)
+                after_path = os.path.join(after_root, after_file_name)
+
+                if not os.path.exists(after_path):
+                    print(f"[SKIP] Missing after file: {after_path}")
+                    continue
+
+                try:
+                    with open(outcome_path, 'r', encoding='utf-8') as f1, open(after_path, 'r', encoding='utf-8') as f2:
+                        code1 = f1.read()
+                        code2 = f2.read()
+
+                    # TF-IDF + cosine similarity
+                    vectorizer = TfidfVectorizer()
+                    tfidf = vectorizer.fit_transform([code1, code2])
+                    similarity = cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
+                    total_similarity = total_similarity + similarity
+                    print(f"[OK] {response_file} in {config_folder}: {similarity:.4f}")
+                    similarities.append((response_file, config_folder, similarity))
+
+                except Exception as e:
+                    print(f"[ERROR] {response_file} in {config_folder}: {e}")
+
+        # Salva in CSV
+        csv_output_path = os.path.join(os.getcwd(), "cosine_similarities.csv")
+        with open(csv_output_path, mode='w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["CR_File", "Configuration_Folder", "Cosine_Similarity"])
+            for response_file, config_folder, similarity in similarities:
+                writer.writerow([response_file, config_folder, similarity])
+
+        print(total_similarity)
+        mean_similarity = total_similarity/366
+        return mean_similarity
 
 if __name__ == "__main__":
     controller = ScraperController(base_path)
     #controller.main(controller)
 
-    #controller.from_before_take_after()
+    controller.from_before_take_after()
 
     files_map = controller.folders_exploration()
 
     controller.save_changes(files_map)
+
+    after__path = os.path.join(base_path, "after_dataset")
+    outcome__path = os.path.join(base_path, "outcome_dataset")
+    mean_sim = controller.calculate_cosine_similarity(after__path, outcome__path)
+
+    print(mean_sim)
