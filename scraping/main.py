@@ -494,13 +494,43 @@ class ScraperController:
         mean_similarity = total_similarity/366
         return mean_similarity
 
+    def penultimate_folders_exploration(self):
+        root_dir = os.path.join(base_path, "configuration_results//configuration_7")
+        conversation_change_map = {}
+
+        for conversation in sorted(os.listdir(root_dir)):
+            conv_path = os.path.join(root_dir, conversation)
+            if not os.path.isdir(conv_path):
+                continue
+
+            iterations = []
+            for item in os.listdir(conv_path):
+                if item.startswith("iteration_"):
+                    iter_path = os.path.join(conv_path, item)
+                    if os.path.isdir(iter_path):
+                        for fname in os.listdir(iter_path):
+                            if fname.startswith("change_CR_") and fname.endswith(".json"):
+                                iterations.append((int(item.split("_")[1]), os.path.join(iter_path, fname)))
+
+            sorted_iters = sorted(iterations, key=lambda x: x[0])
+            if len(sorted_iters) >= 2:
+                # Prende la penultima (es. 4 su 5)
+                conversation_change_map[conversation] = sorted_iters[-2]
+            elif len(sorted_iters) == 1:
+                # Se ce n'è solo una, prende quella
+                conversation_change_map[conversation] = sorted_iters[0]
+            # Se non ce ne sono, non fa nulla
+
+        return conversation_change_map
+
+
 if __name__ == "__main__":
     controller = ScraperController(base_path)
     #controller.main(controller)
 
     controller.from_before_take_after()
 
-    files_map = controller.folders_exploration()
+    files_map = controller.penultimate_folders_exploration()
 
     controller.save_changes(files_map)
 
